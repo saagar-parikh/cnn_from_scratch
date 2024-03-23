@@ -21,6 +21,7 @@ Conv2d::Conv2d(int in_channels, int out_channels, int kernel_size, int stride, i
 }
 
 Tensor<double> &Conv2d::forward(Tensor<double> &input) {
+    // printf("Conv2d forward\n");
     input_ = input;
     product_ = input.convolve2d(kernels, stride, padding, bias);
 

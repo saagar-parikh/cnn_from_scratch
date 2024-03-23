@@ -30,9 +30,24 @@ int main(int argc, char **argv) {
     MNISTDataLoader train_loader(data_path + "/train-images-idx3-ubyte", data_path + "/train-labels-idx1-ubyte", 32);
     printf("Loaded.\n");
 
+    // in_channels, out_channels, kernel_size, stride, padding, seed
+
     int seed = 0;
-    vector<Module *> modules = {new Conv2d(1, 8, 3, 1, 0, seed), new MaxPool(2, 2), new ReLU(), new FullyConnected(1352, 30, seed), new ReLU(),
-                                new FullyConnected(30, 10, seed)};
+    // vector<Module *> modules = { new Conv2d(1, 1, 3, 1, 1, seed), new ReLU(), new Conv2d(1, 8, 3, 1, 0, seed), new MaxPool(2, 2), new ReLU(), new FullyConnected(1352, 30, seed), new ReLU(),
+    //                             new FullyConnected(30, 10, seed)};
+    // vector<Module *> modules = {new FullyConnected(784, 10, seed)};
+    vector<Module *> modules = {
+        new Conv2d(1, 32, 3, 1, 1, seed),
+        new ReLU(),
+        new MaxPool(2, 2),
+        new Conv2d(32, 64, 3, 1, 1, seed),
+        new ReLU(),
+        new MaxPool(2, 2),
+        new FullyConnected(7 * 7 * 64, 128, seed),
+        new ReLU(),
+        new Dropout(0.5),
+        new FullyConnected(128, 10, seed)
+    };
     auto lr_sched = new LinearLRScheduler(0.2, -0.000005);
     NetworkModel model = NetworkModel(modules, new SoftmaxClassifier(), lr_sched);
 //    model.load("network.txt");
