@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <memory>
 #include <iostream>
+#include <omp.h>
 
 /*
  * Tensor class - Supports from 1 to 4 dimensions

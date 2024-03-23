@@ -122,6 +122,19 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other) {
 
     int new_dims[] = {dims[0], other.dims[1]};
     Tensor<T> product(2, new_dims);
+    // #pragma omp parallel for collapse(2)
+    // for (int i = 0; i < this->dims[0]; ++i) {
+    //     for (int j = 0; j < other.dims[1]; ++j) {
+    //         // T value = 0;
+    //         for (int k = 0; k < other.dims[0]; ++k) {
+    //             T value;
+    //             value = this->get(i, k) * other.get(k, j);
+    //             product.add(j + i * dims[1], value);
+    //         }   
+    //     }
+    // }
+    
+    // #pragma omp parallel for collapse(2)
     for (int i = 0; i < this->dims[0]; ++i) {
         for (int j = 0; j < other.dims[1]; ++j) {
             T value = 0;
@@ -132,7 +145,7 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other) {
         }
     }
     return product;
-}
+}   
 
 template<typename T>
 Tensor<T> Tensor<T>::matrixTranspose() {
