@@ -4,6 +4,7 @@
 
 #include "../include/Tensor.h"
 #include <cstring> // memset
+#include <chrono>
 
 template class Tensor<int>;
 
@@ -137,6 +138,7 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
 {
     assert(num_dims == 2 && other.num_dims == 2);
     assert(dims[1] == other.dims[0]);
+    auto start = std::chrono::high_resolution_clock::now();
 
     int new_dims[] = {dims[0], other.dims[1]};
     Tensor<T> product(2, new_dims);
@@ -147,7 +149,7 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     // Assign empty values to product
     // product = (T*)malloc(sizeof(float) * product.size_);
 
-    // Parallel collapse
+// Parallel collapse
 #pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
@@ -168,15 +170,20 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     }
 
     // #pragma omp parallel for collapse(2)
-    // for (int i = 0; i < this->dims[0]; ++i) {
-    //     for (int j = 0; j < other.dims[1]; ++j) {
+    // for (int i = 0; i < this->dims[0]; ++i)
+    // {
+    //     for (int j = 0; j < other.dims[1]; ++j)
+    //     {
     //         T value = 0;
-    //         for (int k = 0; k < other.dims[0]; ++k) {
+    //         for (int k = 0; k < other.dims[0]; ++k)
+    //         {
     //             value += this->get(i, k) * other.get(k, j);
     //         }
     //         product.set(i, j, value);
     //     }
     // }
+    auto stop = std::chrono::high_resolution_clock::now();
+    printf("matmul    Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
     return product;
 }
 
@@ -202,13 +209,17 @@ Tensor<T> Tensor<T>::matrixTranspose()
 template <typename T>
 Tensor<T> Tensor<T>::relu()
 {
+    auto start = std::chrono::high_resolution_clock::now();
     Tensor<T> result(num_dims, dims);
+#pragma omp parallel for
     for (int i = 0; i < size_; ++i)
     {
         T x = data_[i];
         result.data_[i] = x > 0 ? x : 0;
     }
 
+    auto stop = std::chrono::high_resolution_clock::now();
+    printf("relu      Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
     return result;
 }
 

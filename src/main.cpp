@@ -20,8 +20,10 @@ using namespace std;
  * Train a neural network on the MNIST data set and evaluate its performance
  */
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
+int main(int argc, char **argv)
+{
+    if (argc < 2)
+    {
         throw runtime_error("Please provide the data directory path as an argument");
     }
     printf("Data directory: %s\n", argv[1]);
@@ -37,7 +39,7 @@ int main(int argc, char **argv) {
     int seed = 0;
     // vector<Module *> modules = { new Conv2d(1, 1, 3, 1, 1, seed), new ReLU(), new Conv2d(1, 8, 3, 1, 0, seed), new MaxPool(2, 2), new ReLU(), new FullyConnected(1352, 30, seed), new ReLU(),
     //                             new FullyConnected(30, 10, seed)};
-    vector<Module *> modules = {new FullyConnected(784, 10, seed)};
+    vector<Module *> modules = {new FullyConnected(784, 50, seed), new ReLU(), new FullyConnected(50, 10, seed)};
     // vector<Module *> modules = {
     //     new Conv2d(1, 32, 3, 1, 1, seed),
     //     new ReLU(),
@@ -52,23 +54,26 @@ int main(int argc, char **argv) {
     // };
     auto lr_sched = new LinearLRScheduler(0.2, -0.000005);
     NetworkModel model = NetworkModel(modules, new SoftmaxClassifier(), lr_sched);
-//    model.load("network.txt");
-    #if defined(_OPENMP)
+    //    model.load("network.txt");
+#if defined(_OPENMP)
     printf("Using OpenMP\n");
-    #endif
+#endif
     int epochs = 1;
     printf("Training for %d epoch(s).\n", epochs);
     // Train network
     int num_train_batches = train_loader.getNumBatches();
-    for (int k = 0; k < epochs; ++k) {
+    for (int k = 0; k < epochs; ++k)
+    {
         printf("Epoch %d\n", k + 1);
-        for (int i = 0; i < num_train_batches; ++i) {
-            pair<Tensor<double>, vector<int> > xy = train_loader.nextBatch();
+        for (int i = 0; i < num_train_batches; ++i)
+        {
+            pair<Tensor<double>, vector<int>> xy = train_loader.nextBatch();
             auto start = high_resolution_clock::now();
             double loss = model.trainStep(xy.first, xy.second);
             auto stop = high_resolution_clock::now();
-            if ((i + 1) % 10 == 0) {
-                printf("\rIteration %d/%d - Batch Loss: %.4lf", i + 1, num_train_batches, loss);
+            if ((i + 1) % 10 == 0)
+            {
+                printf("\r\nIteration %d/%d - Batch Loss: %.4lf", i + 1, num_train_batches, loss);
                 printf(" | Time taken: %ld\n", duration_cast<microseconds>(stop - start).count());
                 fflush(stdout);
             }
@@ -90,15 +95,19 @@ int main(int argc, char **argv) {
     int total = 0;
     printf("Testing...\n");
     int num_test_batches = test_loader.getNumBatches();
-    for (int i = 0; i < num_test_batches; ++i) {
-        if ((i + 1) % 10 == 0 || i == (num_test_batches - 1)) {
+    for (int i = 0; i < num_test_batches; ++i)
+    {
+        if ((i + 1) % 10 == 0 || i == (num_test_batches - 1))
+        {
             printf("\rIteration %d/%d", i + 1, num_test_batches);
             fflush(stdout);
         }
-        pair<Tensor<double>, vector<int> > xy = test_loader.nextBatch();
+        pair<Tensor<double>, vector<int>> xy = test_loader.nextBatch();
         vector<int> predictions = model.predict(xy.first);
-        for (int j = 0; j < predictions.size(); ++j) {
-            if (predictions[j] == xy.second[j]) {
+        for (int j = 0; j < predictions.size(); ++j)
+        {
+            if (predictions[j] == xy.second[j])
+            {
                 hits++;
             }
         }
@@ -106,7 +115,7 @@ int main(int argc, char **argv) {
     }
     printf("\n");
 
-    printf("Accuracy: %.2f%% (%d/%d)\n", ((double) hits * 100) / total, hits, total);
+    printf("Accuracy: %.2f%% (%d/%d)\n", ((double)hits * 100) / total, hits, total);
 
     return 0;
 }
