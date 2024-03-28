@@ -15,10 +15,11 @@
 /*
  * Tensor class - Supports from 1 to 4 dimensions
  */
-template<typename T>
-class Tensor {
+template <typename T>
+class Tensor
+{
 private:
-    T *data_; // TODO: create an storage class to share data between tensors with different views?
+    T *data_;       // TODO: create an storage class to share data between tensors with different views?
     int size_ = -1; // -1 means the size is undefined
 public:
     int num_dims = 0;
@@ -31,9 +32,9 @@ public:
 
     void zero();
 
-    T get(int i); // 1d tensor
-    T get(int i, int j); // 2d tensor
-    T get(int i, int j, int k); // 3d tensor
+    T get(int i);                      // 1d tensor
+    T get(int i, int j);               // 2d tensor
+    T get(int i, int j, int k);        // 3d tensor
     T get(int i, int j, int k, int l); // 4d tensor
 
     void set(int i, T value);
@@ -45,6 +46,8 @@ public:
     void set(int i, int j, int k, int l, T value);
 
     void add(int i, T value);
+
+    void add(int i, int j, T value);
 
     void add(int i, int j, int k, int l, T value);
 
@@ -82,10 +85,10 @@ public:
     T sum();
 
     Tensor<T> reluPrime();
-//
-//    Tensor<T> crossEntropyPrime(Tensor<T> &output, std::vector<int> const &y);
-//
-//    std::vector<T> sumColumns();
+    //
+    //    Tensor<T> crossEntropyPrime(Tensor<T> &output, std::vector<int> const &y);
+    //
+    //    std::vector<T> sumColumns();
 
     /*
      * Sum of two 2d tensors
@@ -135,11 +138,9 @@ public:
 
     virtual ~Tensor();
 
-//    Tensor<T>(const Tensor<T> &other);
+    //    Tensor<T>(const Tensor<T> &other);
 
-//    ~Tensor();
-
+    //    ~Tensor();
 };
 
-
-#endif //NEURAL_NET_IN_CPP_TENSOR_H
+#endif // NEURAL_NET_IN_CPP_TENSOR_H

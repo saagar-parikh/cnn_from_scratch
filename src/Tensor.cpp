@@ -51,6 +51,13 @@ void Tensor<T>::add(int i, T value)
 }
 
 template <typename T>
+void Tensor<T>::add(int i, int j, T value)
+{
+    assert(num_dims == 2);
+    data_[j + i * dims[1]] += value;
+}
+
+template <typename T>
 void Tensor<T>::view(int new_num_dims, int *new_dims)
 {
     assert(new_num_dims > 0 && new_num_dims <= 4);
@@ -134,10 +141,14 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     int new_dims[] = {dims[0], other.dims[1]};
     Tensor<T> product(2, new_dims);
     // print size of product
-    printf("Product size: %d. new_dims: (%d, %d)\n", product.size_, new_dims[0], new_dims[1]);
+    // printf("Product size: %d. new_dims: (%d, %d)\n", product.size_, new_dims[0], new_dims[1]);
+    product.zero();
+    // printf("Product values: %d\n", product.get(0, 0));
     // Assign empty values to product
     // product = (T*)malloc(sizeof(float) * product.size_);
-    // #pragma omp parallel for collapse(2)
+
+    // Parallel collapse
+#pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
         for (int j = 0; j < other.dims[1]; ++j)
@@ -145,9 +156,13 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
             // T value = 0;
             for (int k = 0; k < other.dims[0]; ++k)
             {
-                T value;
-                value = this->get(i, k) * other.get(k, j);
-                product.add(j + i * dims[1], value);
+                // Working without atomic
+                T value = this->get(i, k) * other.get(k, j);
+                product.add(i, j, value);
+                // product.add(i, j, this->get(i, k) * other.get(k, j));
+                // ERROR:
+                // #pragma omp atomic
+                // product.data_[j + i * dims[1]] += this->get(i, k) * other.get(k, j);
             }
         }
     }
