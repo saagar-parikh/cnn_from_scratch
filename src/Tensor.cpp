@@ -5,6 +5,7 @@
 #include "../include/Tensor.h"
 #include <cstring> // memset
 #include <chrono>
+#include <iostream>
 
 template class Tensor<int>;
 
@@ -145,11 +146,13 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     // print size of product
     // printf("Product size: %d. new_dims: (%d, %d)\n", product.size_, new_dims[0], new_dims[1]);
     product.zero();
-    // printf("Product values: %d\n", product.get(0, 0));
-    // Assign empty values to product
-    // product = (T*)malloc(sizeof(float) * product.size_);
+// printf("Product values: %d\n", product.get(0, 0));
+// Assign empty values to product
+// product = (T*)malloc(sizeof(float) * product.size_);
 
 // Parallel collapse
+// #if defined(_OPENMP)
+// #endif
 #pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
@@ -163,13 +166,13 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
                 product.add(i, j, value);
                 // product.add(i, j, this->get(i, k) * other.get(k, j));
                 // ERROR:
-                // #pragma omp atomic
+                // #pragm omp atomic
                 // product.data_[j + i * dims[1]] += this->get(i, k) * other.get(k, j);
             }
         }
     }
 
-    // #pragma omp parallel for collapse(2)
+    // #pragm omp parallel for collapse(2)
     // for (int i = 0; i < this->dims[0]; ++i)
     // {
     //     for (int j = 0; j < other.dims[1]; ++j)
@@ -183,17 +186,27 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     //     }
     // }
     auto stop = std::chrono::high_resolution_clock::now();
-    printf("matmul    Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
+    // printf("matmul    Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
     return product;
 }
 
-// TODO: check
+// Parallel performs worse
 template <typename T>
 Tensor<T> Tensor<T>::matrixTranspose()
 {
     assert(num_dims == 2);
     int new_dims[] = {dims[1], dims[0]};
     Tensor<T> transpose(num_dims, new_dims);
+    // printf("before transpose");
+    // for (int i = 0; i < dims[0]; ++i)
+    // {
+    //     for (int j = 0; j < dims[1]; ++j)
+    //     {
+    //         std::cout << get(i, j) << " ";
+    //     }
+    //     printf("\n");
+    // }
+    // #pragma omp parallel for
     for (int i = 0; i < dims[0]; ++i)
     {
         for (int j = 0; j < dims[1]; ++j)
@@ -201,6 +214,15 @@ Tensor<T> Tensor<T>::matrixTranspose()
             transpose.set(j, i, get(i, j));
         }
     }
+    // printf("after transpose");
+    // for (int i = 0; i < dims[1]; ++i)
+    // {
+    //     for (int j = 0; j < dims[0]; ++j)
+    //     {
+    //         std::cout << transpose.get(i, j) << " ";
+    //     }
+    //     printf("\n");
+    // }
 
     return transpose;
 }
@@ -211,7 +233,7 @@ Tensor<T> Tensor<T>::relu()
 {
     auto start = std::chrono::high_resolution_clock::now();
     Tensor<T> result(num_dims, dims);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (int i = 0; i < size_; ++i)
     {
         T x = data_[i];
@@ -219,7 +241,7 @@ Tensor<T> Tensor<T>::relu()
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
-    printf("relu      Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
+    // printf("relu      Time taken: %ld\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
     return result;
 }
 

@@ -39,7 +39,12 @@ int main(int argc, char **argv)
     int seed = 0;
     // vector<Module *> modules = { new Conv2d(1, 1, 3, 1, 1, seed), new ReLU(), new Conv2d(1, 8, 3, 1, 0, seed), new MaxPool(2, 2), new ReLU(), new FullyConnected(1352, 30, seed), new ReLU(),
     //                             new FullyConnected(30, 10, seed)};
-    vector<Module *> modules = {new FullyConnected(784, 50, seed), new ReLU(), new FullyConnected(50, 10, seed)};
+    // vector<Module *> modules = {new FullyConnected(784, 50, seed), new ReLU(),
+    //                             new FullyConnected(50, 10, seed)};
+    vector<Module *> modules = {new FullyConnected(784, 784, seed), new ReLU(),
+                                new FullyConnected(784, 256, seed), new ReLU(),
+                                new FullyConnected(256, 64, seed), new ReLU(),
+                                new FullyConnected(64, 10, seed)};
     // vector<Module *> modules = {
     //     new Conv2d(1, 32, 3, 1, 1, seed),
     //     new ReLU(),
@@ -62,24 +67,24 @@ int main(int argc, char **argv)
     printf("Training for %d epoch(s).\n", epochs);
     // Train network
     int num_train_batches = train_loader.getNumBatches();
+    auto start = high_resolution_clock::now();
     for (int k = 0; k < epochs; ++k)
     {
         printf("Epoch %d\n", k + 1);
         for (int i = 0; i < num_train_batches; ++i)
         {
             pair<Tensor<double>, vector<int>> xy = train_loader.nextBatch();
-            auto start = high_resolution_clock::now();
             double loss = model.trainStep(xy.first, xy.second);
-            auto stop = high_resolution_clock::now();
             if ((i + 1) % 10 == 0)
             {
                 printf("\r\nIteration %d/%d - Batch Loss: %.4lf", i + 1, num_train_batches, loss);
-                printf(" | Time taken: %ld\n", duration_cast<microseconds>(stop - start).count());
                 fflush(stdout);
             }
         }
         printf("\n");
     }
+    auto stop = high_resolution_clock::now();
+    printf("Time taken: %ld\n", duration_cast<microseconds>(stop - start).count());
     // Save weights
     model.save("network.txt");
 
