@@ -146,13 +146,13 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     // print size of product
     // printf("Product size: %d. new_dims: (%d, %d)\n", product.size_, new_dims[0], new_dims[1]);
     product.zero();
-// printf("Product values: %d\n", product.get(0, 0));
-// Assign empty values to product
-// product = (T*)malloc(sizeof(float) * product.size_);
+    // printf("Product values: %d\n", product.get(0, 0));
+    // Assign empty values to product
+    // product = (T*)malloc(sizeof(float) * product.size_);
 
-// Parallel collapse
-// #if defined(_OPENMP)
-// #endif
+    // Parallel collapse
+    // #if defined(_OPENMP)
+    // #endif
 #pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
@@ -228,6 +228,7 @@ Tensor<T> Tensor<T>::matrixTranspose()
 }
 
 // TODO: parallelize
+// Parallel performs worse
 template <typename T>
 Tensor<T> Tensor<T>::relu()
 {
@@ -246,6 +247,7 @@ Tensor<T> Tensor<T>::relu()
 }
 
 // TODO: parallelize
+
 template <typename T>
 T sigmoid(T x)
 {
@@ -256,6 +258,7 @@ template <typename T>
 Tensor<T> Tensor<T>::sigmoid()
 {
     Tensor<T> result(num_dims, dims);
+#pragma omp parallel for
     for (int i = 0; i < size_; ++i)
     {
         T x = data_[i];
@@ -335,6 +338,7 @@ template <typename T>
 Tensor<T> Tensor<T>::reluPrime()
 {
     Tensor<T> prime(num_dims, dims);
+    // #pragma omp parallel for
     for (int i = 0; i < size_; ++i)
     {
         prime.data_[i] = data_[i] > 0 ? 1 : 0;
