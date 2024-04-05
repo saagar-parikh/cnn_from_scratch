@@ -34,8 +34,8 @@ void MNISTDataLoader::loadImages(std::string const &path) {
     rows_ = bytesToUInt(bytes);
     file.read(bytes, 4);
     cols_ = bytesToUInt(bytes);
-
-//    num_images_ = 64;
+    num_images_ = 2000;
+    // std::cout << "Number of images: " << num_images_;
 
     images_.resize(num_images_);
     char byte;
@@ -69,6 +69,8 @@ void MNISTDataLoader::loadLabels(std::string const &path) {
     file.read(bytes, 4); // magic number
     file.read(bytes, 4);
     num_images_ = bytesToUInt(bytes);
+    num_images_ = 2000;
+
 
     labels_.resize(num_images_);
     char byte;

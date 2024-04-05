@@ -153,7 +153,7 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     // Parallel collapse
     // #if defined(_OPENMP)
     // #endif
-#pragma omp parallel for collapse(3)
+// #pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
         for (int j = 0; j < other.dims[1]; ++j)
@@ -206,7 +206,7 @@ Tensor<T> Tensor<T>::matrixTranspose()
     //     }
     //     printf("\n");
     // }
-    // #pragma omp parallel for
+    // #pragma omp parallel for collapse(2)
     for (int i = 0; i < dims[0]; ++i)
     {
         for (int j = 0; j < dims[1]; ++j)
@@ -258,7 +258,6 @@ template <typename T>
 Tensor<T> Tensor<T>::sigmoid()
 {
     Tensor<T> result(num_dims, dims);
-#pragma omp parallel for
     for (int i = 0; i < size_; ++i)
     {
         T x = data_[i];
@@ -428,6 +427,15 @@ Tensor<T> Tensor<T>::columnWiseSum()
     int rows = dims[0], cols = dims[1];
     int sum_dims[] = {cols};
     Tensor<T> sum(1, sum_dims);
+    // sum.zero();
+    // #pragma omp parallel for
+    // for (int i = 0; i < cols; ++i)
+    // {
+    //     for (int j = 0; j < rows; ++j)
+    //     {
+    //         sum.add(i, get(j, i));
+    //     }
+    // }
     for (int i = 0; i < cols; ++i)
     {
         T total = 0;
@@ -542,6 +550,7 @@ Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tens
     int h = ((dims[2] + 2 * padding - (kernels.dims[2] - 1) - 1) / stride) + 1;
     int result_dims[] = {dims[0], kernels.dims[0], h, w};
     Tensor<T> output(4, result_dims);
+    // #pragma omp parallel for collapse(3)
     for (int i = 0; i < dims[0]; ++i)
     { // pra cada img do batch
         for (int j = 0; j < kernels.dims[0]; ++j)

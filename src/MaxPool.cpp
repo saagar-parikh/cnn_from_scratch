@@ -15,6 +15,7 @@ Tensor<double> &MaxPool::forward(Tensor<double> &input) {
     int dims[] = {input.dims[0], input.dims[1], h, w};
     output_ = Tensor<double>(4, dims);
     indexes = Tensor<int>(4, dims);
+    // #pragma omp parallel for
     for (int i = 0; i < input.dims[0]; ++i) { // for each batch image
         for (int j = 0; j < input.dims[1]; ++j) { // for each image channel
             for (int k = 0; k < dims[2]; ++k) { // for each output y
