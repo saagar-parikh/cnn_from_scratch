@@ -8,6 +8,8 @@ Get the MNIST data set:
 ```sh
 bash get_mnist.sh
 ```
+sudo apt install make
+sudo apt-get update && sudo apt-get install build-essential
 Generate your Makefile:
 ```sh
 cmake -DCMAKE_BUILD_TYPE=Release
