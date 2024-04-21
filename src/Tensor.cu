@@ -4,7 +4,10 @@
 
 #include "../include/Tensor.h"
 #include <cstring> // memset
+#include <cuda_runtime.h>
+// #include <cuda_launch_parameters.h>
 
+using namespace std;
 
 template
 class Tensor<int>;
@@ -114,46 +117,46 @@ Tensor<T>::~Tensor() {
     delete[] data_;
 }
 
-template <typename T>
-__global__ void matmul_kernel(T *mat1, T *mat2, T *output, int dim1, int dim2, int dim3) {
+// template <typename T>
+__global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (row < dim1 && col < dim3) {
-        T sum = 0;
-        for (int k = 0; k < dim2; k++) {
-            sum += mat1[row * dim2 + k] * mat2[k * dim3 + col];
+    if (row < dim_1 && col < dim_3) {
+        float sum = 0;
+        for (int k = 0; k < dim_2; k++) {
+            sum += mat1[row * dim_2 + k] * mat2[k * dim_3 + col];
         }
-        output[row * dim3 + col] = sum;
+        output[row * dim_3 + col] = sum;
     }
 }
 
 
 template<typename T>
-Tensor<T> Tensor<T>::matmul(Tensor<T> other) {
+Tensor<T> extern "C" Tensor<T>::  matmul(Tensor<T> other) {
     assert(num_dims == 2 && other.num_dims == 2);
     assert(dims[1] == other.dims[0]);
 
     int new_dims[] = {dims[0], other.dims[1]};
     Tensor<T> product(2, new_dims);
 
-    T *mat1, *mat2, *out;
+    float *mat1, *mat2, *out;
 
-    cudaError_t err = cudaMalloc(&mat1,this->data_.dim[0]*this->data_.dim[1]* sizeof(T));
+    cudaError_t err = cudaMalloc(&mat1,dims[0]*dims[1]* sizeof(float));
     if (err != cudaSuccess)
     {
         cout << "Dev Memory not allocated" << endl;
         exit(-1);
     }
 
-    err = cudaMalloc(&mat2, other.dims[0] * other.dims[1] * sizeof(T));
+    err = cudaMalloc(&mat2, other.dims[0] * other.dims[1] * sizeof(float));
     if (err != cudaSuccess)
     {
         cout << "Dev Memory not allocated" << endl;
         exit(-1);
     }
     
-    err = cudaMalloc(&out, dim[0] * other.dims[1] * sizeof(T));
+    err = cudaMalloc(&out, dims[0] * other.dims[1] * sizeof(float));
     if (err != cudaSuccess)
     {
         cout << "Dev Memory not allocated" << endl;
@@ -162,8 +165,8 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other) {
 
 
     cudaMemcpy(mat1,
-              this->data_,
-              this->data_.dim[0]*this->data_.dim[1]* sizeof(float), 
+              data_,
+              dims[0]*dims[1]* sizeof(float), 
               cudaMemcpyHostToDevice);
 
     cudaMemcpy(mat2,
@@ -173,11 +176,11 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other) {
 
     dim3 dimBlock(16,16);
     dim3 dimGrid(2,2);
-    matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, dims[0], dims[1], other.dims[1]);
+    matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, int(dims[0]), int(dims[1]), int(other.dims[1]));
 
     cudaMemcpy(product.data_,
               out,
-              dim[0] * other.dims[1]* sizeof(float), 
+              dims[0] * other.dims[1]* sizeof(float), 
               cudaMemcpyDeviceToHost);
 
     cudaFree(mat1);
@@ -474,4 +477,8 @@ Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tens
         }
     }
     return output;
+}
+
+int main() {
+    return 0;
 }

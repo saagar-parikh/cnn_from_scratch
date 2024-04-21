@@ -6,6 +6,10 @@
 #include "../include/FullyConnected.h"
 #include "../include/Tensor.h"
 
+
+extern Tensor<t> Tensor<T>::  matmul(Tensor<T> );
+
+
 FullyConnected::FullyConnected(int input_size, int output_size, int seed) {
     std::default_random_engine generator(seed);
     std::normal_distribution<double> distribution(0.0, 1.0);
