@@ -153,7 +153,7 @@ Tensor<T> Tensor<T>::matmul(Tensor<T> other)
     // Parallel collapse
     // #if defined(_OPENMP)
     // #endif
-// #pragma omp parallel for collapse(3)
+    // #pragma omp parallel for collapse(3)
     for (int i = 0; i < this->dims[0]; ++i)
     {
         for (int j = 0; j < other.dims[1]; ++j)
