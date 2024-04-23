@@ -19,9 +19,9 @@ template <typename T>
 class Tensor
 {
 private:
-    T *data_;       // TODO: create an storage class to share data between tensors with different views?
     int size_ = -1; // -1 means the size is undefined
 public:
+    T *data_;       // TODO: create an storage class to share data between tensors with different views?
     int num_dims = 0;
     int dims[4]{}; // Max tensor dimensions is 4 (could be unlimited, but this makes the implementation simpler)
     Tensor() = default;

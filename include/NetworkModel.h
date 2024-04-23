@@ -16,11 +16,12 @@
  */
 class NetworkModel {
 private:
-    std::vector<Module *> modules_;
+    
     OutputLayer *output_layer_;
     LRScheduler* lr_scheduler_;
     int iteration = 0;
 public:
+    std::vector<Module *> modules_;
     NetworkModel(std::vector<Module *> &modules, OutputLayer *output_layer, LRScheduler* lr_scheduler);
 
     double trainStep(Tensor<double> &x, std::vector<int> &y);

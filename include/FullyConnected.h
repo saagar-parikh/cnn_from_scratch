@@ -14,13 +14,19 @@
  */
 class FullyConnected : public Module {
 private:
+    // Tensor<double> weights;
+    // Tensor<double> bias;
+    // Tensor<double> input_;
+    // Tensor<double> product_;
+    // int input_dims[4];
+    // int input_num_dims;
+public:
     Tensor<double> weights;
     Tensor<double> bias;
     Tensor<double> input_;
     Tensor<double> product_;
     int input_dims[4];
     int input_num_dims;
-public:
     FullyConnected(int input_size, int output_size, int seed = 0);
 
     Tensor<double> &forward(Tensor<double> &input) override;

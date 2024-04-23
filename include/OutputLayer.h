@@ -16,7 +16,7 @@ public:
 
     virtual std::pair<double, Tensor<double>> backprop(std::vector<int> ground_truth) = 0;
 
-    virtual ~OutputLayer() = default;;
+    virtual ~OutputLayer() = default;
 };
 
 

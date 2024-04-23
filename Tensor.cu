@@ -4,7 +4,7 @@
 
 #include "../include/Tensor.h"
 #include <cstring> // memset
-#include <cuda_runtime.h>
+// #include <cuda_runtime.h>
 // #include <cuda_launch_parameters.h>
 
 using namespace std;
@@ -118,7 +118,7 @@ Tensor<T>::~Tensor() {
 }
 
 // template <typename T>
-__global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
+__device__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -133,7 +133,7 @@ __global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1
 
 
 template<typename T>
-Tensor<T> extern "C" Tensor<T>::  matmul(Tensor<T> other) {
+Tensor<T> Tensor<T>::  matmul(Tensor<T> other) {
     assert(num_dims == 2 && other.num_dims == 2);
     assert(dims[1] == other.dims[0]);
 
