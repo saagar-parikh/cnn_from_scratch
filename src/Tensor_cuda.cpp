@@ -546,6 +546,41 @@ void Tensor<T>::dropout(std::default_random_engine generator, std::uniform_real_
 //dim[2] = height, dim[3] = width
 
 //kernels =  {out_channels, in_channels, kernel_size, kernel_size};
+
+__global__ void conv2d_kernel(float *input, float *kernels, float *output, float *bias,
+                               int B, int C, int H, int W, // Input dimensions
+                               int M, int KH, int KW, // Kernel dimensions
+                               int outH, int outW, // Output dimensions
+                               int pad, int stride) {
+    int w = blockIdx.x * blockDim.x + threadIdx.x; // Calculate the width index
+    int h = blockIdx.y * blockDim.y + threadIdx.y; // Calculate the height index
+    int m = blockIdx.z % M; // Calculate the output channel index
+    int b = blockIdx.z / M; // Calculate the batch index
+
+    if (b < B && w < outW && h < outH) {
+        float total = 0.0;
+
+        for (int c = 0; c < C; ++c) {
+            for (int kh = 0; kh < KH; ++kh) {
+                for (int kw = 0; kw < KW; ++kw) {
+                    int ih = h * stride - pad + kh;
+                    int iw = w * stride - pad + kw;
+
+                    if (ih >= 0 && ih < H && iw >= 0 && iw < W) {
+                        // Calculate the index in the input tensor considering the batch
+                        float pixel = input[((b * C + c) * H + ih) * W + iw];
+                        float weight = kernels[((m * C + c) * KH + kh) * KW + kw];
+                        total += pixel * weight;
+                    }
+                }
+            }
+        }
+        total += bias[m];
+        // Calculate the index in the output tensor considering the batch
+        output[((b * M + m) * outH + h) * outW + w] = total;
+    }
+}
+
 template <typename T>
 Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tensor<T> bias)
 {   
@@ -562,6 +597,8 @@ Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tens
             for (int k = 0; k < h; ++k)
             { // pra cada k vertical no output volume
                 for (int l = 0; l < w; ++l)
+
+
                 { // pra cada l horizontal no output volume
                     int im_si = stride * k - padding;
                     int im_sj = stride * l - padding;
@@ -575,14 +612,18 @@ Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tens
                                 int x = im_si + n, y = im_sj + o;
                                 if (x < 0 || x >= dims[2] || y < 0 || y >= dims[3])
                                     continue; // se for regiao do padding, pula (soma 0)
-                                T a = get(i, m, x, y);  
-                                T b = kernels.get(j, m, n, o);
+                                T a = data_[y + x * dims[3] + m * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]];
+                                T b = kernels.data_[o + n * dims[3] + m * dims[2] * dims[3] + j * dims[1] * dims[2] * dims[3]]; 
                                 total += a * b;
                             }
                         }
                     }
-                    output.set(i, j, k, l, total + bias.get(j));
+            
+                    output.data_[l + k * dims[3] + j * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]] =  total + bias.data_[j];
+            
                 }
+
+
             }
         }
     }
