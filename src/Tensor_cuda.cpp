@@ -588,44 +588,104 @@ Tensor<T> Tensor<T>::convolve2d(Tensor<T> kernels, int stride, int padding, Tens
     int w = ((dims[3] + 2 * padding - (kernels.dims[3] - 1) - 1) / stride) + 1;
     int h = ((dims[2] + 2 * padding - (kernels.dims[2] - 1) - 1) / stride) + 1;
     int result_dims[] = {dims[0], kernels.dims[0], h, w};
-    Tensor<T> output(4, result_dims);
+    Tensor<T> output(4, result_dims);   
+    float *inp, *ker, *bi, *out;
 
-    for (int i = 0; i < dims[0]; ++i)
-    { // pra cada img do batch
-        for (int j = 0; j < kernels.dims[0]; ++j)
-        { // pra cada output volume
-            for (int k = 0; k < h; ++k)
-            { // pra cada k vertical no output volume
-                for (int l = 0; l < w; ++l)
-
-
-                { // pra cada l horizontal no output volume
-                    int im_si = stride * k - padding;
-                    int im_sj = stride * l - padding;
-                    T total = 0;
-                    for (int m = 0; m < kernels.dims[1]; ++m)
-                    { // pra cada canal do filtro
-                        for (int n = 0; n < kernels.dims[2]; ++n)
-                        {
-                            for (int o = 0; o < kernels.dims[3]; ++o)
-                            {
-                                int x = im_si + n, y = im_sj + o;
-                                if (x < 0 || x >= dims[2] || y < 0 || y >= dims[3])
-                                    continue; // se for regiao do padding, pula (soma 0)
-                                T a = data_[y + x * dims[3] + m * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]];
-                                T b = kernels.data_[o + n * dims[3] + m * dims[2] * dims[3] + j * dims[1] * dims[2] * dims[3]]; 
-                                total += a * b;
-                            }
-                        }
-                    }
-            
-                    output.data_[l + k * dims[3] + j * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]] =  total + bias.data_[j];
-            
-                }
-
-
-            }
-        }
+    cudaError_t err = cudaMalloc(&inp, input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float));
+    if (err != cudaSuccess) 
+    {
+        cout << "CUDA malloc failed: " << cudaGetErrorString(err)
+            << " [Requested dims: " << input.dims[0] << " x " << input.dims[1]
+            << ", Size: " << (input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float)) << " bytes]" << endl;
+        exit(-1);
     }
-    return output;
+
+    err = cudaMalloc(&ker, kernels.dims[2] * kernels.dims[3] * sizeof(float));
+    if (err != cudaSuccess)
+    {
+        cout << "Dev Memory not allocated2" << endl;
+        exit(-1);
+    }
+
+    err = cudaMalloc(&bi, bias.dims[0] * sizeof(float));
+    if (err != cudaSuccess)
+    {
+        cout << "Dev Memory not allocated3" << endl;
+        exit(-1);
+    }
+
+    err = cudaMalloc(&out, w * h * input.dims[0] * kernels.dim[0] * sizeof(float));
+    if (err != cudaSuccess)
+    {
+        cout << "Dev Memory not allocated3" << endl;
+        exit(-1);
+    }
+
+    cudaMemcpy(inp,
+                input.data_,
+                input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float),
+                cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ker,
+                kernels.data_,
+                kernels.dims[2] * kernels.dims[3] * sizeof(float),
+                cudaMemcpyHostToDevice);
+    
+    cudaMemcpy(bi,
+                bi.data_,
+                bias.dims[0] * sizeof(float),
+                cudaMemcpyHostToDevice);
+
+    dim3 threadsPerBlock(16, 16);
+    dim3 numBlocks((outW + 15) / 16, (outH + 15) / 16, M * B); // Updated for batch processing
+
+    conv2d_kernel<<<numBlocks, threadsPerBlock>>>(inp, ker, out, bi,
+                                                  input.dim[0], input.dim[1], input.dim[2], input.dim[3], kernels.dim[0], kernels.dim[2], kernels.dim[3], h, w, padding, stride);
+    cudaDeviceSynchronize(); // Wait for the kernel to complete
+    
+    cudaMemcpy(output,
+                out.data_,
+                w * h * input.dims[0] * kernels.dim[0] * sizeof(float),
+                cudaMemcpyDeviceToHost);
+
+    // return output;
+
+    // for (int i = 0; i < dims[0]; ++i)
+    // { // pra cada img do batch
+    //     for (int j = 0; j < kernels.dims[0]; ++j)
+    //     { // pra cada output volume
+    //         for (int k = 0; k < h; ++k)
+    //         { // pra cada k vertical no output volume
+    //             for (int l = 0; l < w; ++l)
+
+
+    //             { // pra cada l horizontal no output volume
+    //                 int im_si = stride * k - padding;
+    //                 int im_sj = stride * l - padding;
+    //                 T total = 0;
+    //                 for (int m = 0; m < kernels.dims[1]; ++m)
+    //                 { // pra cada canal do filtro
+    //                     for (int n = 0; n < kernels.dims[2]; ++n)
+    //                     {
+    //                         for (int o = 0; o < kernels.dims[3]; ++o)
+    //                         {
+    //                             int x = im_si + n, y = im_sj + o;
+    //                             if (x < 0 || x >= dims[2] || y < 0 || y >= dims[3])
+    //                                 continue; // se for regiao do padding, pula (soma 0)
+    //                             T a = data_[y + x * dims[3] + m * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]];
+    //                             T b = kernels.data_[o + n * dims[3] + m * dims[2] * dims[3] + j * dims[1] * dims[2] * dims[3]]; 
+    //                             total += a * b;
+    //                         }
+    //                     }
+    //                 }
+            
+    //                 output.data_[l + k * dims[3] + j * dims[2] * dims[3] + i * dims[1] * dims[2] * dims[3]] =  total + bias.data_[j];
+            
+    //             }
+
+
+    //         }
+    //     }
+    // }
+  
 }

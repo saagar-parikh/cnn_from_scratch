@@ -9,10 +9,13 @@
 
 class Conv2d : public Module {
 private:
+    // Tensor<double> input_;
+    // Tensor<double> product_;
+    // int stride, padding;
+public:
     Tensor<double> input_;
     Tensor<double> product_;
     int stride, padding;
-public:
     Tensor<double> kernels;
     Tensor<double> bias;
 

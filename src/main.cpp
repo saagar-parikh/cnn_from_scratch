@@ -20,6 +20,42 @@ using namespace std;
 /*
  * Train a neural network on the MNIST data set and evaluate its performance
  */
+
+ 
+__global__ void conv2d_kernel(float *input, float *kernels, float *output, float *bias,
+                               int B, int C, int H, int W, // Input dimensions
+                               int M, int KH, int KW, // Kernel dimensions
+                               int outH, int outW, // Output dimensions
+                               int pad, int stride) {
+    int w = blockIdx.x * blockDim.x + threadIdx.x; // Calculate the width index
+    int h = blockIdx.y * blockDim.y + threadIdx.y; // Calculate the height index
+    int m = blockIdx.z % M; // Calculate the output channel index
+    int b = blockIdx.z / M; // Calculate the batch index
+
+    if (b < B && w < outW && h < outH) {
+        float total = 0.0;
+
+        for (int c = 0; c < C; ++c) {
+            for (int kh = 0; kh < KH; ++kh) {
+                for (int kw = 0; kw < KW; ++kw) {
+                    int ih = h * stride - pad + kh;
+                    int iw = w * stride - pad + kw;
+
+                    if (ih >= 0 && ih < H && iw >= 0 && iw < W) {
+                        // Calculate the index in the input tensor considering the batch
+                        float pixel = input[((b * C + c) * H + ih) * W + iw];
+                        float weight = kernels[((m * C + c) * KH + kh) * KW + kw];
+                        total += pixel * weight;
+                    }
+                }
+            }
+        }
+        total += bias[m];
+        // Calculate the index in the output tensor considering the batch
+        output[((b * M + m) * outH + h) * outW + w] = total;
+    }
+}
+
 __global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -176,6 +212,9 @@ int main(int argc, char **argv)
             fflush(stdout);
         }
         pair<Tensor<double>, vector<int>> xy = test_loader.nextBatch();
+
+        ///////////////////////////////////////
+        // Conv2d layer
 
         ////////////////////////////////////////
         // FC layer 1
