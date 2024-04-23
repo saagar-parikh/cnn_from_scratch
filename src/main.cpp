@@ -20,19 +20,19 @@ using namespace std;
 /*
  * Train a neural network on the MNIST data set and evaluate its performance
  */
-// __global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
-//     int row = blockIdx.y * blockDim.y + threadIdx.y;
-//     int col = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-//     if (row < dim_1 && col < dim_3) {
-//         float sum = 0;
-//         for (int k = 0; k < dim_2; k++) {
-//             sum += mat1[row * dim_2 + k] * mat2[k * dim_3 + col];
-//         }
-//         output[row * dim_3 + col] = sum;
-//     }
-// }
-// // template<typename T>
+    if (row < dim_1 && col < dim_3) {
+        float sum = 0;
+        for (int k = 0; k < dim_2; k++) {
+            sum += mat1[row * dim_2 + k] * mat2[k * dim_3 + col];
+        }
+        output[row * dim_3 + col] = sum;
+    }
+}
+// template<typename T>
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -127,11 +127,71 @@ int main(int argc, char **argv)
         }
         Tensor<double> input_ = input;
 
+ //////////////////////////////////////////
+        // func:    matmul
+        // inputs:  input, fc_weight
+        // outputs: output
 
+
+        //////////////////////////////////////////
+        // assert(int num_dims == 2 && fc_weights.num_dims == 2);
+        assert(input.dims[1] == fc_weights.dims[0]);
+
+        int new_dims[] = {input.dims[0], fc_weights.dims[1]};
+        Tensor<double> product(2, new_dims);
+
+        float *mat1, *mat2, *out;
+
+        cudaError_t err = cudaMalloc(&mat1,input.dims[0]*input.dims[1]* sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated" << endl;
+            exit(-1);
+        }
+
+        err = cudaMalloc(&mat2, fc_weights.dims[0] * fc_weights.dims[1] * sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated" << endl;
+            exit(-1);
+        }
+        
+        err = cudaMalloc(&out, input.dims[0] * fc_weights.dims[1] * sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated" << endl;
+            exit(-1);
+        }
+
+
+        cudaMemcpy(mat1,
+                input.data_,
+                input.dims[0]*input.dims[1]* sizeof(float), 
+                cudaMemcpyHostToDevice);
+
+        cudaMemcpy(mat2,
+                fc_weights.data_,
+                fc_weights.dims[0] * fc_weights.dims[1]* sizeof(float), 
+                cudaMemcpyHostToDevice);
+
+        dim3 dimBlock(16,16);
+        dim3 dimGrid(2,2);
+        matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, int(input.dims[0]), int(input.dims[1]), int(fc_weights.dims[1]));
+
+        cudaMemcpy(product.data_,
+                out,
+                input.dims[0] * fc_weights.dims[1]* sizeof(float), 
+                cudaMemcpyDeviceToHost);
+
+        cudaFree(mat1);
+        cudaFree(mat2);
+        cudaFree(out);
+        
+        ////////////////////////////////////////////////////////////
        
 
 
-        Tensor<double> output = input.matmul(fc_weights) + fc_bias;
+        Tensor<double> output = product + fc_bias;
 
 
         cout << "module 0 done" << endl;

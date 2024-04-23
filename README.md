@@ -44,3 +44,5 @@ License
 ----
 
 MIT
+
+nvcc -x cu src/main.cpp src/FullyConnected.cpp src/Sigmoid.cpp src/Dropout.cpp src/SoftmaxClassifier.cpp src/MNISTDataLoader.cpp src/ReLU.cpp src/Tensor.cpp src/Conv2d.cpp src/MaxPool.cpp src/LinearLRScheduler.cpp -I../include -o main.x -arch=sm_70 -std=c++11
