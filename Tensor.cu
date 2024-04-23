@@ -4,7 +4,6 @@
 
 #include "../include/Tensor.h"
 #include <cstring> // memset
-// #include <cuda_runtime.h>
 // #include <cuda_launch_parameters.h>
 
 using namespace std;
