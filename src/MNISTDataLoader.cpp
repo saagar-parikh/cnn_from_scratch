@@ -46,7 +46,7 @@ void MNISTDataLoader::loadImages(std::string const &path)
     cols_ = bytesToUInt(bytes);
     printf("rows, cols, num_images_: %d %d %d\n", rows_, cols_, num_images_);
     fflush(stdout);
-    // num_images_ = 4;
+    num_images_ = 2000;
 
     images_.resize(num_images_);
     char byte;
@@ -89,7 +89,7 @@ void MNISTDataLoader::loadLabels(std::string const &path)
     file.read(bytes, 4); // magic number
     file.read(bytes, 4);
     num_images_ = bytesToUInt(bytes);
-    // num_images_ = 4;
+    num_images_ = 2000;
 
     labels_.resize(num_images_);
     char byte;

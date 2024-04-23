@@ -20,13 +20,16 @@ using namespace std;
 /*
  * Train a neural network on the MNIST data set and evaluate its performance
  */
-__global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3) {
+__global__ void matmul_kernel(float *mat1, float *mat2, float *output, int dim_1, int dim_2, int dim_3)
+{
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (row < dim_1 && col < dim_3) {
+    if (row < dim_1 && col < dim_3)
+    {
         float sum = 0;
-        for (int k = 0; k < dim_2; k++) {
+        for (int k = 0; k < dim_2; k++)
+        {
             sum += mat1[row * dim_2 + k] * mat2[k * dim_3 + col];
         }
         output[row * dim_3 + col] = sum;
@@ -45,8 +48,8 @@ int main(int argc, char **argv)
     // in_channels, out_channels, kernel_size, stride, padding, seed
 
     int seed = 0;
-    vector<Module *> modules = {new FullyConnected(224*224, 2, seed), new ReLU()};
-                                
+    vector<Module *> modules = {new FullyConnected(28 * 28, 2, seed), new ReLU()};
+
     auto lr_sched = new LinearLRScheduler(0.2, -0.000005);
     NetworkModel model = NetworkModel(modules, new SoftmaxClassifier(), lr_sched);
     //    model.load("network.txt");
@@ -54,10 +57,9 @@ int main(int argc, char **argv)
     printf("Using OpenMP\n");
 #endif
 
-
     printf("Loading testing set... ");
     fflush(stdout);
-    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 32);
+    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 1);
 
     // MNISTDataLoader test_loader(data_path + "/t10k-images-idx3-ubyte", data_path + "/t10k-labels-idx1-ubyte", 32);
     model.load("network.txt");
@@ -71,9 +73,8 @@ int main(int argc, char **argv)
     printf("Testing...\n");
     int num_test_batches = test_loader.getNumBatches();
 
-
     // initialize fc layer
-    int input_size = 224*224;
+    int input_size = 224 * 224;
     int output_size = 2;
     std::default_random_engine generator(seed);
     std::normal_distribution<double> distribution(0.0, 1.0);
@@ -93,7 +94,6 @@ int main(int argc, char **argv)
         }
         pair<Tensor<double>, vector<int>> xy = test_loader.nextBatch();
 
-        
         // vector<Module *> modules = {
         //     new Conv2d(1, 32, 3, 1, 1, seed),
         //     new ReLU(),
@@ -109,17 +109,19 @@ int main(int argc, char **argv)
         // cout << typeid(module);
         // vector<int> predictions = module->forward(xy.first);
         // vector<int> predictions = {0};
-        //forward pass of full connected layer
+        // forward pass of full connected layer
         cout << "module 0 selected" << endl;
         // Tensor<double> &output = module->forward(xy.first);
         auto input = xy.first;
         int input_num_dims = input.num_dims;
         int input_dims[4];
         std::copy(input.dims, input.dims + input.num_dims, input_dims);
-        if (input.num_dims != 2) {
+        if (input.num_dims != 2)
+        {
             // flatten tensor
             int flatten_size = 1;
-            for (int i = 1; i < input.num_dims; ++i) {
+            for (int i = 1; i < input.num_dims; ++i)
+            {
                 flatten_size *= input.dims[i];
             }
             int dims[] = {input.dims[0], flatten_size};
@@ -127,11 +129,10 @@ int main(int argc, char **argv)
         }
         Tensor<double> input_ = input;
 
- //////////////////////////////////////////
+        //////////////////////////////////////////
         // func:    matmul
         // inputs:  input, fc_weight
         // outputs: output
-
 
         //////////////////////////////////////////
         // assert(int num_dims == 2 && fc_weights.num_dims == 2);
@@ -142,88 +143,71 @@ int main(int argc, char **argv)
 
         float *mat1, *mat2, *out;
 
-        cudaError_t err = cudaMalloc(&mat1,input.dims[0]*input.dims[1]* sizeof(float));
+        cudaError_t err = cudaMalloc(&mat1, input.dims[0] * input.dims[1] * sizeof(float));
         if (err != cudaSuccess)
         {
-            cout << "Dev Memory not allocated" << endl;
+            cout << "Dev Memory not allocated1 " << err << " " << input.dims[0] << " " << input.dims[1] << endl;
             exit(-1);
         }
 
         err = cudaMalloc(&mat2, fc_weights.dims[0] * fc_weights.dims[1] * sizeof(float));
         if (err != cudaSuccess)
         {
-            cout << "Dev Memory not allocated" << endl;
+            cout << "Dev Memory not allocated2" << endl;
             exit(-1);
         }
-        
+
         err = cudaMalloc(&out, input.dims[0] * fc_weights.dims[1] * sizeof(float));
         if (err != cudaSuccess)
         {
-            cout << "Dev Memory not allocated" << endl;
+            cout << "Dev Memory not allocated3" << endl;
             exit(-1);
         }
 
-
         cudaMemcpy(mat1,
-                input.data_,
-                input.dims[0]*input.dims[1]* sizeof(float), 
-                cudaMemcpyHostToDevice);
+                   input.data_,
+                   input.dims[0] * input.dims[1] * sizeof(float),
+                   cudaMemcpyHostToDevice);
 
         cudaMemcpy(mat2,
-                fc_weights.data_,
-                fc_weights.dims[0] * fc_weights.dims[1]* sizeof(float), 
-                cudaMemcpyHostToDevice);
+                   fc_weights.data_,
+                   fc_weights.dims[0] * fc_weights.dims[1] * sizeof(float),
+                   cudaMemcpyHostToDevice);
 
-        dim3 dimBlock(16,16);
-        dim3 dimGrid(2,2);
+        dim3 dimBlock(16, 16);
+        dim3 dimGrid(2, 2);
         matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, int(input.dims[0]), int(input.dims[1]), int(fc_weights.dims[1]));
 
         cudaMemcpy(product.data_,
-                out,
-                input.dims[0] * fc_weights.dims[1]* sizeof(float), 
-                cudaMemcpyDeviceToHost);
+                   out,
+                   input.dims[0] * fc_weights.dims[1] * sizeof(float),
+                   cudaMemcpyDeviceToHost);
 
         cudaFree(mat1);
         cudaFree(mat2);
         cudaFree(out);
-        
-        ////////////////////////////////////////////////////////////
-       
 
+        ////////////////////////////////////////////////////////////
 
         Tensor<double> output = product + fc_bias;
 
-
         cout << "module 0 done" << endl;
-
-
-
-
-
-
 
         auto &module1 = model.modules_[1];
         cout << "module 1 selected" << endl;
         Tensor<double> &output1 = module1->forward(output);
         cout << "module 1 done" << endl;
 
-
-        
         // vector<int> predictions = model.predict(xy.first);
 
-
-
-
-
-
-    //     for (int j = 0; j < predictions.size(); ++j)
-    //     {
-    //         if (predictions[j] == xy.second[j])
-    //         {
-    //             hits++;
-    //         }
-    //     }
-    //     total += xy.second.size();
+        //     for (int j = 0; j < predictions.size(); ++j)
+        //     {
+        //         if (predictions[j] == xy.second[j])
+        //         {
+        //             hits++;
+        //         }
+        //     }
+        //     total += xy.second.size();
     }
     // free(module);
     printf("Testing done\n");

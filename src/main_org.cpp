@@ -31,14 +31,14 @@ int main(int argc, char **argv)
 
     printf("Loading training set... ");
     fflush(stdout);
-    MNISTDataLoader train_loader(data_path + "/mnist_train_images.ubyte", data_path + "/mnist_train_labels.ubyte", 32);
-    // MNISTDataLoader train_loader(data_path + "/train-images-idx3-ubyte", data_path + "/train-labels-idx1-ubyte", 32);
+    // MNISTDataLoader train_loader(data_path + "/mnist_train_images.ubyte", data_path + "/mnist_train_labels.ubyte", 32);
+    MNISTDataLoader train_loader(data_path + "/train-images-idx3-ubyte", data_path + "/train-labels-idx1-ubyte", 32);
     printf("Loaded.\n");
 
     // in_channels, out_channels, kernel_size, stride, padding, seed
 
     int seed = 0;
-    vector<Module *> modules = {new FullyConnected(224*224, 2, seed), new ReLU()};
+    vector<Module *> modules = {new FullyConnected(28 * 28, 2, seed), new ReLU()};
 
     // vector<Module *> modules = {
     //     new Conv2d(1, 32, 3, 1, 1, seed),
