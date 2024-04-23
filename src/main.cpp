@@ -49,6 +49,21 @@ vector<Tensor<double>> fc_init_weights(int inp_size, int out_size, int seed){
     return {weights, bias};
 }
 
+vector<Tensor<double>> conv_init_weights(int in_channels, int out_channels, int kernel_size, int stride, int padding, int seed) {
+    std::default_random_engine generator(seed);
+    std::normal_distribution<double> distribution(0.0, 1.0);
+
+    int kernel_dims[] = {out_channels, in_channels, kernel_size, kernel_size};
+    Tensor<double> kernels = Tensor<double>(4, kernel_dims);
+    kernels.randn(generator, distribution, sqrt(2.0 / (kernel_size * kernel_size * out_channels)));
+
+    int bias_dims[] = {out_channels};
+    Tensor<double> bias = Tensor<double>(1, bias_dims);
+    bias.randn(generator, distribution, 0);
+
+    return {kernels,bias};
+}
+
 
 void fc_forward(float*& mat1, float*& mat2, float*& out, Tensor<double> input, Tensor<double> weights){
         int input_num_dims = input.num_dims;
@@ -69,12 +84,6 @@ void fc_forward(float*& mat1, float*& mat2, float*& out, Tensor<double> input, T
 
         assert(input.dims[1] == weights.dims[0]);
 
-        // cudaError_t err = cudaMalloc(&mat1, input.dims[0] * input.dims[1] * sizeof(float));
-        // if (err != cudaSuccess)
-        // {
-        //     cout << "Dev Memory not allocated1 " << err << " " << input.dims[0] << " " << input.dims[1] << endl;
-        //     exit(-1);
-        // }
         cudaError_t err = cudaMalloc(&mat1, input.dims[0] * input.dims[1] * sizeof(float));
         if (err != cudaSuccess) 
         {
@@ -108,15 +117,6 @@ void fc_forward(float*& mat1, float*& mat2, float*& out, Tensor<double> input, T
                    weights.dims[0] * weights.dims[1] * sizeof(float),
                    cudaMemcpyHostToDevice);
 }
-
-
-
-
-
-
-
-
-
 
 int input_size = 224 * 224;
 int output_size = 2;
@@ -231,7 +231,6 @@ int main(int argc, char **argv)
         Tensor<double> fc2_weights = fc2_weights_and_biases[0];
         Tensor<double> fc2_bias = fc2_weights_and_biases[1];
 
-
         // float *mat1, *mat2, *out;
         int new_dims1[] = {output1.dims[0], fc2_weights.dims[1]};
         Tensor<double> product2(2, new_dims1);
@@ -240,9 +239,6 @@ int main(int argc, char **argv)
 
         dim3 dimBlock2(16, 16);
         dim3 dimGrid2(2, 2);
-        // cudaEvent_t st2, et2;
-        // cudaEventCreate(&st2);
-        // cudaEventCreate(&et2);
 
         cudaEventRecord(st2);
         matmul_kernel<<<dimGrid2, dimBlock2>>>(mat1, mat2, out, int(output1.dims[0]), int(output1.dims[1]), int(fc2_weights.dims[1]));
@@ -266,8 +262,6 @@ int main(int argc, char **argv)
 
         //// END matmul kernel ////////////////////////////////
         output = product2 + fc2_bias;        
-
-
         //// END FC2 ///////////////////////////////////////////
         
     }
