@@ -118,7 +118,7 @@ void fc_forward(float*& mat1, float*& mat2, float*& out, Tensor<double> input, T
         }
         Tensor<double> input_ = input;
 
-        assert(input.dims[1] == weights.dims[0]);
+        // assert(input.dims[1] == weights.dims[0]);
 
         cudaError_t err = cudaMalloc(&mat1, input.dims[0] * input.dims[1] * sizeof(float));
         if (err != cudaSuccess) 
@@ -154,7 +154,7 @@ void fc_forward(float*& mat1, float*& mat2, float*& out, Tensor<double> input, T
                    cudaMemcpyHostToDevice);
 }
 
-int input_size = 224 * 224;
+int input_size = 16* 224 * 224;
 int output_size = 2;
     
 // template<typename T>
@@ -170,7 +170,10 @@ int main(int argc, char **argv)
     // in_channels, out_channels, kernel_size, stride, padding, seed
 
     int seed = 0;
-    vector<Module *> modules = {new FullyConnected(224 * 224, 512, seed), new ReLU(), new FullyConnected(512, 2, seed)};
+    vector<Module *> modules = {new Conv2d(1, 32, 3, 1, 1, seed),
+     new FullyConnected(224 * 224, 512, seed), 
+     new ReLU(),
+    new FullyConnected(512, 2, seed)};
     // , 
 
     auto lr_sched = new LinearLRScheduler(0.2, -0.000005);
@@ -203,6 +206,9 @@ int main(int argc, char **argv)
     Tensor<double> fc2_weights = fc2_weights_and_biases[0];
     Tensor<double> fc2_bias = fc2_weights_and_biases[1];
 
+    vector<Tensor<double>> conv1_kernels_and_biases = conv_init_weights(1, 16, 3, 1, 1, 0);
+    
+
     
     for (int i = 0; i < num_test_batches; ++i)
     {
@@ -215,20 +221,130 @@ int main(int argc, char **argv)
 
         ///////////////////////////////////////
         // Conv2d layer
+        Tensor<double> cnn1_kernels = conv1_kernels_and_biases[0];
+        Tensor<double> cnn1_bias = conv1_kernels_and_biases[1];
 
+        auto &module_cnn = model.modules_[0];
+        auto input = xy.first;
+        int padding = 1;
+        int stride = 1;
+
+        int w = ((input.dims[3] + 2 * padding - (cnn1_kernels.dims[3] - 1) - 1) / stride) + 1;
+        int h = ((input.dims[2] + 2 * padding - (cnn1_kernels.dims[2] - 1) - 1) / stride) + 1;
+        int result_dims[] = {input.dims[0], cnn1_kernels.dims[0], h, w};
+        Tensor<double> output(4, result_dims);   
+        float *inp, *ker, *bi, *out_c1;
+
+        cudaError_t err = cudaMalloc(&inp, input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float));
+        if (err != cudaSuccess) 
+        {
+            cout << "CUDA malloc failed: " << cudaGetErrorString(err)
+                << " [Requested dims: " << input.dims[0] << " x " << input.dims[1]
+                << ", Size: " << (input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float)) << " bytes]" << endl;
+            exit(-1);
+        }
+
+        err = cudaMalloc(&ker, cnn1_kernels.dims[2] * cnn1_kernels.dims[3] * sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated2" << endl;
+            exit(-1);
+        }
+
+        err = cudaMalloc(&bi, cnn1_bias.dims[0] * sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated3" << endl;
+            exit(-1);
+        }
+
+        err = cudaMalloc(&out_c1, w * h * input.dims[0] * cnn1_kernels.dims[0] * sizeof(float));
+        if (err != cudaSuccess)
+        {
+            cout << "Dev Memory not allocated3" << endl;
+            exit(-1);
+        }
+
+        cudaMemcpy(inp,
+                    input.data_,
+                    input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float),
+                    cudaMemcpyHostToDevice);
+
+        cudaMemcpy(ker,
+                    cnn1_kernels.data_,
+                    cnn1_kernels.dims[2] * cnn1_kernels.dims[3] * sizeof(float),
+                    cudaMemcpyHostToDevice);
+        
+        cudaMemcpy(bi,
+                    cnn1_bias.data_,
+                    cnn1_bias.dims[0] * sizeof(float),
+                    cudaMemcpyHostToDevice);
+
+        dim3 threadsPerBlock(16, 16);
+        dim3 numBlocks((w + 15) / 16, (h + 15) / 16, cnn1_kernels.dims[0] * input.dims[0]); // Updated for batch processing
+
+        conv2d_kernel<<<numBlocks, threadsPerBlock>>>(inp, ker, out_c1, bi,
+                                                    input.dims[0], input.dims[1], input.dims[2], input.dims[3], cnn1_kernels.dims[0], cnn1_kernels.dims[2], cnn1_kernels.dims[3], h, w, padding, stride);
+        cudaDeviceSynchronize(); // Wait for the kernel to complete
+        
+        cudaMemcpy(output.data_,
+                    out_c1,
+                    w * h * input.dims[0] * cnn1_kernels.dims[0] * sizeof(float),
+                    cudaMemcpyDeviceToHost);
+
+        cudaFree(inp);
+        cudaFree(ker);
+        cudaFree(out_c1);
+        cudaFree(bi);
+        /////////////////////////////////////// End of CNN1
+
+        ///// Handling ouput to flatten
+        int new_dims_c[] = {output.dims[0], output.dims[1]*output.dims[2]*output.dims[3]};
+        Tensor<double> output_flat(2,new_dims_c);
+
+
+        // for (int b = 0; b < output.dims[0]; ++b) {
+        //     for (int c = 0; c < output.dims[1]; ++c) {
+        //         for (int h = 0; h < output.dims[2]; ++h) {
+        //             for (int w = 0; w < output.dims[3]; ++w) {
+        //                 int index = c * (output.dims[2] * output.dims[3]) + h * output.dims[3] + w;
+        //                 output_flat[b][index] = vec4D[b][c][h][w]; // Changed from [b][index] to (b, index)
+        //             }
+        //         }
+        //     }
+        // }
+        const int batch_size = output.dims[0];
+        const int channels = output.dims[1];
+        const int height = output.dims[2];
+        const int width = output.dims[3];
+        const int feature_size = channels * height * width;
+
+        for (int b = 0; b < batch_size; ++b) {
+            for (int c = 0; c < channels; ++c) {
+                for (int h = 0; h < height; ++h) {
+                    for (int w = 0; w < width; ++w) {
+                        int flat_index = b * feature_size + c * (height * width) + h * width + w;
+                        int original_index = b * (channels * height * width) + c * (height * width) + h * width + w;
+                        output_flat.data_[flat_index] = output.data_[original_index];
+                    }
+                }
+            }
+        }
+
+        cout << " flat shape" << output_flat.dims[0] << " " << output_flat.dims[1] << endl;
         ////////////////////////////////////////
         // FC layer 1
-        auto &module = model.modules_[0];
+        auto &module = model.modules_[1];
 
-        auto input = xy.first;
+        // auto input = xy.first;
 
         Tensor<double> fc1_weights = fc1_weights_and_biases[0];
         Tensor<double> fc1_bias = fc1_weights_and_biases[1];
         float *mat1, *mat2, *out;
-        int new_dims[] = {input.dims[0], fc1_weights.dims[1]};
+        int new_dims[] = {output_flat.dims[0], fc1_weights.dims[1]};
         Tensor<double> product(2, new_dims);
 
-        fc_forward(mat1, mat2, out, input, fc1_weights);
+        fc_forward(mat1, mat2, out, output_flat, fc1_weights);
 
         dim3 dimBlock(16, 16);
         dim3 dimGrid(2, 2);
@@ -237,7 +353,7 @@ int main(int argc, char **argv)
         cudaEventCreate(&et2);
 
         cudaEventRecord(st2);
-        matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, int(input.dims[0]), int(input.dims[1]), int(fc1_weights.dims[1]));
+        matmul_kernel<<<dimGrid, dimBlock>>>(mat1, mat2, out, int(output_flat.dims[0]), int(output_flat.dims[1]), int(fc1_weights.dims[1]));
         cudaEventRecord(et2);
 
         // host waits until et2 has occured
@@ -249,7 +365,7 @@ int main(int argc, char **argv)
         cout << "Kernel time: " << milliseconds << "ms" << endl;
         cudaMemcpy(product.data_,
                    out,
-                   input.dims[0] * fc1_weights.dims[1] * sizeof(float),
+                   output_flat.dims[0] * fc1_weights.dims[1] * sizeof(float),
                    cudaMemcpyDeviceToHost);
 
         cudaFree(mat1);
@@ -257,16 +373,16 @@ int main(int argc, char **argv)
         cudaFree(out);
 
         //// END matmul kernel ////////////////////////////////
-        Tensor<double> output = product + fc1_bias;
+        Tensor<double> output_fc1 = product + fc1_bias;
 
         //// END FC1 //////////////////////////////////////////
         //// RELU
-        auto &module1 = model.modules_[1];
-        Tensor<double> &output1 = module1->forward(output);        
+        auto &module1 = model.modules_[2];
+        Tensor<double> &output1 = module1->forward(output_fc1);        
 
         ///// END RELU /////////////////////////////////////////
         // FC layer 2
-        auto &module2 = model.modules_[2];
+        auto &module2 = model.modules_[3];
         Tensor<double> fc2_weights = fc2_weights_and_biases[0];
         Tensor<double> fc2_bias = fc2_weights_and_biases[1];
 
@@ -302,7 +418,6 @@ int main(int argc, char **argv)
         //// END matmul kernel ////////////////////////////////
         output = product2 + fc2_bias;        
         //// END FC2 ///////////////////////////////////////////
-        
     }
     printf("Testing done\n");
 
