@@ -290,42 +290,31 @@ int main(int argc, char **argv)
         conv_module = (Conv2d *) modules[0];
         output = conv_forward(xy.first,conv_module);
         /////////////////////////////////////// End of CNN1
-        cout << output.data_[0] << endl;
 
 
         p_module = (MaxPool *) modules[1];
         output = p_module->forward(output);
 
-                cout << output.data_[0] << endl;
-
-
         conv_module = (Conv2d *) modules[2];
         output = conv_forward(output,conv_module);
-        cout << output.data_[0] << endl;
 
         p_module = (MaxPool *) modules[3];
         output = p_module->forward(output);
-             cout << output.data_[0] << endl;
    
         conv_module = (Conv2d *) modules[4];
         output = conv_forward(output,conv_module);
-        cout << output.data_[0] << endl;
 
         conv_module = (Conv2d *) modules[5];
         output = conv_forward(output,conv_module);
-        cout << output.data_[0] << endl;
 
         conv_module= (Conv2d *) modules[6];
         output = conv_forward(output,conv_module);
-                cout << output.data_[0] << endl;
 
         p_module = (MaxPool *) modules[7];
         output = p_module->forward(output);
-              cout << output.data_[0] << endl;
   
         ///// Handling ouput to flatten
         output = flatten(output);
-                cout << output.data_[0] << endl;
 
         //cout << " flat shape" << output_flat.dims[0] << " " << output_flat.dims[1] << endl;
         ////////////////////////////////////////
