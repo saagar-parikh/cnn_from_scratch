@@ -43,7 +43,7 @@ Tensor<double> &MaxPool::forward(Tensor<double> &input) {
 
     return output_;
 }
-
+            
 Tensor<double> MaxPool::backprop(Tensor<double> chainGradient, double learning_rate) {
     Tensor<double> input_gradient(input_.num_dims, input_.dims);
     input_gradient.zero();

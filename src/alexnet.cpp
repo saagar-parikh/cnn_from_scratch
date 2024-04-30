@@ -14,6 +14,7 @@
 #include <chrono>
 #include <typeinfo>
 #include <omp.h>
+#include<chrono>
 using namespace std::chrono;
 using namespace std;
 
@@ -63,6 +64,40 @@ __global__ void conv2d_kernel(float *input, float *kernels, float *output, float
         total += bias[m];
         // Calculate the index in the output tensor considering the batch
         output[((b * M + m) * outH + h) * outW + w] = total;
+    }
+}
+
+__global__ void pool_kernel(float *input, float *output, float *indexes,
+                               int B, int C, int H, int W, // Input dimensions
+                               int size_, // Kernel dimensions
+                               int outH, int outW, // Output dimensions
+                               int stride) {
+    int w = blockIdx.x * blockDim.x + threadIdx.x; // Calculate the width index
+    int h = blockIdx.y * blockDim.y + threadIdx.y; // Calculate the height index
+    int c = blockIdx.z % C; // Calculate the output channel index
+    int b = blockIdx.z / C; // Calculate the batch index
+
+    if (b < B && w < outW && h < outH) {
+        float total = 0.0;
+
+        double max = -999999999; // -infinity
+        int index = 0;
+        for (int kh = 0; kh < size_; ++kh) {
+            for (int kw = 0; kw < size_; ++kw) {
+                int ih = h * stride + kh;
+                int iw = w * stride + kw;
+
+                if (ih >= 0 && ih < H && iw >= 0 && iw < W) {
+                    double value = input[((b * C + c) * H + ih) * W + iw];
+                    if (value > max) {
+                        index = c * size_ + kw;
+                        max = value;
+                    }
+                }
+            }
+        }
+        output[((b * C + c) * outH + h) * outW + w] = max;
+        indexes[((b * C + c) * outH + h) * outW + w] = index;
     }
 }
 
@@ -133,7 +168,7 @@ Tensor<double> fc_forward(Tensor<double> input, FullyConnected *module_fc){
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, st2, et2);
 
-        cout << "Kernel time: " << milliseconds << "ms" << endl;
+        cout << "FC_Kernel time: " << milliseconds << "ms" << endl;
         cudaMemcpy(product.data_,
                    out,
                    input.dims[0] * fc_weights.dims[1] * sizeof(float),
@@ -183,9 +218,23 @@ Tensor<double> conv_forward(Tensor<double> input, Conv2d *module_cnn)
     dim3 threadsPerBlock(16, 16);
     dim3 numBlocks((w + 15) / 16, (h + 15) / 16, cnn_kernels.dims[0] * input.dims[0]); // Updated for batch processing
 
+    cudaEvent_t st2, et2;
+    cudaEventCreate(&st2);
+    cudaEventCreate(&et2);
+
+    cudaEventRecord(st2);
+
     conv2d_kernel<<<numBlocks, threadsPerBlock>>>(inp, ker, out_c, bi,
                                                 input.dims[0], input.dims[1], input.dims[2], input.dims[3], cnn_kernels.dims[0], cnn_kernels.dims[2], cnn_kernels.dims[3], h, w, padding, stride);
-    cudaDeviceSynchronize(); // Wait for the kernel to complete
+    cudaEventRecord(et2);
+
+    // host waits until et2 has occured
+    cudaEventSynchronize(et2);
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, st2, et2);
+
+    cout << "Conv_Kernel time: " << milliseconds << "ms" << endl;
     
     cudaMemcpy(output.data_,
                 out_c,
@@ -199,6 +248,65 @@ Tensor<double> conv_forward(Tensor<double> input, Conv2d *module_cnn)
 
     return output;
 }
+
+
+Tensor<double> pool_forward(Tensor<double> input, MaxPool *module_pool)
+{
+
+    int stride = module_pool->stride_;
+    int size_ = module_pool->size_;
+    int w = ((input.dims[3] - (size_ - 1) - 1) / stride) + 1;
+    int h = ((input.dims[2] - (size_ - 1) - 1) / stride) + 1;
+    int result_dims[] = {input.dims[0], input.dims[1], h, w};
+    
+    Tensor<double> output(4, result_dims);   
+    Tensor<double> indexes(4, result_dims);   
+
+    float *inp = cudaMalloc_fn(input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float));
+    float *ind = cudaMalloc_fn(w * h * input.dims[0] * input.dims[1] * sizeof(float));
+    float *out_c = cudaMalloc_fn(w * h * input.dims[0] * input.dims[1] * sizeof(float));
+
+    cudaMemcpy(inp,
+                input.data_,
+                input.dims[0] * input.dims[1] * input.dims[2] * input.dims[3] * sizeof(float),
+                cudaMemcpyHostToDevice);
+
+    dim3 threadsPerBlock(16, 16);
+    dim3 numBlocks((w + 15) / 16, (h + 15) / 16, input.dims[1] * input.dims[0]); // Updated for batch processing
+    
+    cudaEvent_t st2, et2;
+    cudaEventCreate(&st2);
+    cudaEventCreate(&et2);
+
+    cudaEventRecord(st2);
+    pool_kernel<<<numBlocks, threadsPerBlock>>>(inp, out_c, ind,
+                                                input.dims[0], input.dims[1], input.dims[2], input.dims[3],size_, h, w, stride);
+    cudaEventRecord(et2);
+
+    // host waits until et2 has occured
+    cudaEventSynchronize(et2);
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, st2, et2);
+
+    cout << "Pool_Kernel time: " << milliseconds << "ms" << endl;
+    
+    cudaMemcpy(indexes.data_,
+                ind,
+                w * h * input.dims[0] * input.dims[1] * sizeof(float),
+                cudaMemcpyDeviceToHost);
+    cudaMemcpy(output.data_,
+            out_c,
+            w * h * input.dims[0] * input.dims[1]* sizeof(float),
+            cudaMemcpyDeviceToHost);
+
+    cudaFree(inp);
+    cudaFree(ind);
+    cudaFree(out_c);
+
+    return output;
+}
+
 
 Tensor<double> flatten(Tensor<double> input)
 {
@@ -272,8 +380,10 @@ int main(int argc, char **argv)
     printf("Testing...\n");
     int num_test_batches = test_loader.getNumBatches();
     
+    auto total_time = 0.0;
+    # pragma omp parallel for num_threads(num_test_batches)
     for (int i = 0; i < num_test_batches; ++i)
-    {
+    {   auto start_time = high_resolution_clock::now();
         if ((i + 1) % 10 == 0 || i == (num_test_batches - 1))
         {
             printf("\rIteration %d/%d", i + 1, num_test_batches);
@@ -293,13 +403,14 @@ int main(int argc, char **argv)
 
 
         p_module = (MaxPool *) modules[1];
-        output = p_module->forward(output);
+        output = pool_forward(output, p_module);
 
         conv_module = (Conv2d *) modules[2];
         output = conv_forward(output,conv_module);
 
         p_module = (MaxPool *) modules[3];
-        output = p_module->forward(output);
+        output = pool_forward(output, p_module);
+
    
         conv_module = (Conv2d *) modules[4];
         output = conv_forward(output,conv_module);
@@ -311,7 +422,8 @@ int main(int argc, char **argv)
         output = conv_forward(output,conv_module);
 
         p_module = (MaxPool *) modules[7];
-        output = p_module->forward(output);
+        output = pool_forward(output, p_module);
+
   
         ///// Handling ouput to flatten
         output = flatten(output);
@@ -329,7 +441,16 @@ int main(int argc, char **argv)
 
         ///// END RELU /////////////////////////////////////////
         // FC layer 2
+        auto end_time = high_resolution_clock::now();
+
+        auto duration = duration_cast<microseconds>(end_time - start_time).count();
+
+        cout << "Per Iteration Time: " << duration <<endl;
+        total_time += duration;
     }
+
+    cout << "Average Time: " << total_time/num_test_batches << endl;
+    cout << num_test_batches <<endl;
     printf("Testing done\n");
 
     return 0;

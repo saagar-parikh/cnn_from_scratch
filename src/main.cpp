@@ -14,6 +14,7 @@
 #include <chrono>
 #include <typeinfo>
 #include <omp.h>
+#include<chrono>
 using namespace std::chrono;
 using namespace std;
 
