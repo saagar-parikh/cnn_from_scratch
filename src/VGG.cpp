@@ -360,35 +360,12 @@ int main(int argc, char **argv)
     //     new FullyConnected(8*8*32, 512, seed), 
     //     new FullyConnected(512, 2, seed)
     vector<Module *> modules = {
-    new Conv2d(1, 64, 3, 1, 1, seed), //  224x224
-    new Conv2d(64, 64, 3, 1, 1, seed), // 224x224
-    new MaxPool(2,2), // 112x112
-
-
-    new Conv2d(64, 128, 3, 1, 1, seed), //112x112
-    new Conv2d(128, 128, 3, 1, 1, seed), //112x112
-    new MaxPool(2,2), //56x56
-
-
-    new Conv2d(128, 256, 3, 1, 1, seed), //56x56
-    new Conv2d(256, 256, 3, 1, 1, seed), //56x56
-    new Conv2d(256, 256, 3, 1, 1, seed), //56x56
-    new MaxPool(2,2), // 28x28
-
-    new Conv2d(256, 512, 3, 1, 1, seed), //28x28
-    new Conv2d(512, 512, 3, 1, 1, seed), //28x28
-    new Conv2d(512, 512, 3, 1, 1, seed),  //28x28
-    new MaxPool(2,2), //14x14
-
-    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
-    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
-    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
-    new MaxPool(2,2), // 7x7
-
-    
-    new FullyConnected(7*7*512, 4096, seed), //7x7x512
-    new FullyConnected(4096, 4096, seed),
-    new FullyConnected(4096, 2, seed)
+        new Conv2d(1, 8, 3, 1, 0, seed), // 222x222
+        new MaxPool(2, 2), // 111x111
+        new ReLU(), 
+        new FullyConnected(8*111*111, 30, seed), 
+        new ReLU(),
+        new FullyConnected(30, 2, seed) 
     };
     // , 
 
@@ -427,86 +404,31 @@ int main(int argc, char **argv)
         Conv2d *conv_module;
         FullyConnected *fc_module;
         MaxPool *p_module;
+        ReLU *relu_module;
 
         ///////////////////////////////////////
         conv_module = (Conv2d *) modules[0];
         output = conv_forward(xy.first,conv_module);
 
-        conv_module = (Conv2d *) modules[1];
-        output = conv_forward(xy.first,conv_module);
-
-        p_module = (MaxPool *) modules[2];
-        output = pool_forward(output, p_module);
-
-        //////////////////////////////////////////
-
-        conv_module = (Conv2d *) modules[3];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[4];
-        output = conv_forward(xy.first,conv_module);
-
-        p_module = (MaxPool *) modules[5];
-        output = pool_forward(output, p_module);
-
-        //////////////////////////////////////////
-
-        conv_module = (Conv2d *) modules[6];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[7];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[8];
-        output = conv_forward(xy.first,conv_module);
-
-        p_module = (MaxPool *) modules[9];
-        output = pool_forward(output, p_module);
-
-        //////////////////////////////////////////
-
-        conv_module = (Conv2d *) modules[10];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[11];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[12];
-        output = conv_forward(xy.first,conv_module);
-
-        p_module = (MaxPool *) modules[13];
-        output = pool_forward(output, p_module);
-
-        //////////////////////////////////////////
-
-        conv_module = (Conv2d *) modules[14];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[15];
-        output = conv_forward(xy.first,conv_module);
-
-        conv_module = (Conv2d *) modules[16];
-        output = conv_forward(xy.first,conv_module);
-
-        p_module = (MaxPool *) modules[17];
+        p_module = (MaxPool *) modules[1];
         output = pool_forward(output, p_module);
   
+        // //// RELU
+        relu_module = (ReLU *) modules[2];
+        output = relu_module->forward(output); 
+
         ///// Handling ouput to flatten
         output = flatten(output);
 
-        //cout << " flat shape" << output_flat.dims[0] << " " << output_flat.dims[1] << endl;
-        ////////////////////////////////////////
-
-        fc_module = (FullyConnected *) modules[18];
+        fc_module = (FullyConnected *) modules[3];
         output = fc_forward(output,fc_module);
 
-        //// END FC1 //////////////////////////////////////////
-        //// RELU
-        fc_module = (FullyConnected *) modules[19];
+        relu_module = (ReLU *) modules[4];
+        output = relu_module->forward(output); 
+
+        fc_module = (FullyConnected *) modules[5];
         output = fc_forward(output,fc_module);        
 
-        ///// END RELU /////////////////////////////////////////
-        // FC layer 2
         auto end_time = high_resolution_clock::now();
 
         auto duration = duration_cast<microseconds>(end_time - start_time).count();
