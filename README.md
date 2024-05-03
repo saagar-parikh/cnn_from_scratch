@@ -1,5 +1,12 @@
 # Parallelization of CNN - Alexnet: CPU and GPU
 
+
+Make sure that the data is downloaded and is in the /data directory.
+
+For the data to be downloaded
+
+bash get_mnist.sh
+
 ## OpenMP
 The following files correspond to our OpenMP implementation of the network.
 
