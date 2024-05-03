@@ -13,7 +13,7 @@ The following files correspond to our OpenMP implementation of the network.
 
 ```
 make
-./vgg data
+./neural_net_in_cpp data/
 ```
 
 ## CUDA
@@ -22,7 +22,7 @@ The following files correspond to our CUDA implementation of the network. For ru
 ```
 nvcc -x cu src/vgg.cpp src/NetworkModel.cpp src/FullyConnected.cpp src/Sigmoid.cpp src/Dropout.cpp src/SoftmaxClassifier.cpp src/MNISTDataLoader.cpp src/ReLU.cpp src/Tensor.cpp src/Conv2d.cpp src/MaxPool.cpp src/LinearLRScheduler.cpp -I../include -o vgg.x -arch=sm_70 -std=c++11
 
-./vgg.x
+./vgg.x data/
 ```
 
 License
