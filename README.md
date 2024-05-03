@@ -17,12 +17,13 @@ make
 ```
 
 ## CUDA
-The following files correspond to our CUDA implementation of the network.
+The following files correspond to our CUDA implementation of the network. For running compiling the code the command is as follows:
+
 ```
-./cuda/src/alexnet.cpp
+nvcc -x cu src/vgg.cpp src/NetworkModel.cpp src/FullyConnected.cpp src/Sigmoid.cpp src/Dropout.cpp src/SoftmaxClassifier.cpp src/MNISTDataLoader.cpp src/ReLU.cpp src/Tensor.cpp src/Conv2d.cpp src/MaxPool.cpp src/LinearLRScheduler.cpp -I../include -o vgg.x -arch=sm_70 -std=c++11
+
+./vgg.x
 ```
-We run the following command to compile 
-```nvcc -x cu src/alexnet.cpp src/NetworkModel.cpp src/FullyConnected.cpp src/Sigmoid.cpp src/Dropout.cpp src/SoftmaxClassifier.cpp src/MNISTDataLoader.cpp src/ReLU.cpp src/Tensor.cpp src/Conv2d.cpp src/MaxPool.cpp src/LinearLRScheduler.cpp -I../include -o alexnet.x -arch=sm_70 -std=c++11```
 
 License
 ----
