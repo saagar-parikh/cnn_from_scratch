@@ -1,46 +1,23 @@
-# Neural Network in Pure C++
+# Parallelization of CNN - Alexnet: CPU and GPU
 
-Simple modular implementation of a neural network in C++ using only the STL. 
+## OpenMP
+The following files correspond to our OpenMP implementation of the network.
 
-### Installation
-Get the MNIST data set:
-
-```sh
-bash get_mnist.sh
 ```
-sudo apt install make
-sudo apt-get update && sudo apt-get install build-essential
-Generate your Makefile:
-```sh
-cmake -DCMAKE_BUILD_TYPE=Release
-```
-Make the code:
-```sh
 make
+./vgg data
 ```
-Run:
-```sh
-./neural_net_in_cpp data
-```
-The training should take about a minute and achieve ~97% accuracy.
 
-### Todos
- - [x] Fully connected;
- - [x] Sigmoid;
- - [x] Dropout;
- - [x] ReLU;
- - [ ] Tanh;
- - [ ] Leaky ReLU;
- - [ ] Batch normalization;
- - [x] Convolutional layers;
- - [x] Max pooling;
- - [ ] Other optimizers (Adam, RMSProp, etc);
- - [x] Learning rate scheduler;
- - [ ] Plots;
- - [ ] Filter visualization
- - [ ] CUDA?
+## CUDA
+The following files correspond to our CUDA implementation of the network.
+```
+./cuda/src/alexnet.cpp
+```
+We run the following command to compile 
+```nvcc -x cu src/alexnet.cpp src/NetworkModel.cpp src/FullyConnected.cpp src/Sigmoid.cpp src/Dropout.cpp src/SoftmaxClassifier.cpp src/MNISTDataLoader.cpp src/ReLU.cpp src/Tensor.cpp src/Conv2d.cpp src/MaxPool.cpp src/LinearLRScheduler.cpp -I../include -o alexnet.x -arch=sm_70 -std=c++11```
 
 License
 ----
 
 MIT
+
