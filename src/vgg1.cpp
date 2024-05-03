@@ -348,17 +348,47 @@ int main(int argc, char **argv)
     // in_channels, out_channels, kernel_size, stride, padding, seed
 
     int seed = 0;
+    // vector<Module *> modules = {
+    //     new Conv2d(1, 32, 11, 4, 0, seed), //54x54x32
+    //     new MaxPool(3,2), //26x26
+    //     new Conv2d(32, 64, 5, 1, 2, seed), //26x26
+    //     new MaxPool(3,2), //12x12
+    //     new Conv2d(64, 128, 3, 1, 2, seed), //14x14
+    //     new Conv2d(128, 256, 3, 1, 2, seed), //16x16
+    //     new Conv2d(256, 32, 3, 1, 2, seed), //18x18
+    //     new MaxPool(3,2), //8x8
+    //     new FullyConnected(8*8*32, 512, seed), 
+    //     new FullyConnected(512, 2, seed)
     vector<Module *> modules = {
-        new Conv2d(1, 32, 11, 4, 0, seed), //54x54x32
-        new MaxPool(3,2), //26x26
-        new Conv2d(32, 64, 5, 1, 2, seed), //26x26
-        new MaxPool(3,2), //12x12
-        new Conv2d(64, 128, 3, 1, 2, seed), //14x14
-        new Conv2d(128, 256, 3, 1, 2, seed), //16x16
-        new Conv2d(256, 32, 3, 1, 2, seed), //18x18
-        new MaxPool(3,2), //8x8
-        new FullyConnected(8*8*32, 512, seed), 
-        new FullyConnected(512, 2, seed)
+    new Conv2d(1, 64, 3, 1, 1, seed), //  224x224
+    new Conv2d(64, 64, 3, 1, 1, seed), // 224x224
+    new MaxPool(2,2), // 112x112
+
+
+    new Conv2d(64, 128, 3, 1, 1, seed), //112x112
+    new Conv2d(128, 128, 3, 1, 1, seed), //112x112
+    new MaxPool(2,2), //56x56
+
+
+    new Conv2d(128, 256, 3, 1, 1, seed), //56x56
+    new Conv2d(256, 256, 3, 1, 1, seed), //56x56
+    new Conv2d(256, 256, 3, 1, 1, seed), //56x56
+    new MaxPool(2,2), // 28x28
+
+    new Conv2d(256, 512, 3, 1, 1, seed), //28x28
+    new Conv2d(512, 512, 3, 1, 1, seed), //28x28
+    new Conv2d(512, 512, 3, 1, 1, seed),  //28x28
+    new MaxPool(2,2), //14x14
+
+    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
+    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
+    new Conv2d(512, 512, 3, 1, 1, seed), //14x14
+    new MaxPool(2,2), // 7x7
+
+    
+    new FullyConnected(7*7*512, 4096, seed), //7x7x512
+    new FullyConnected(4096, 4096, seed),
+    new FullyConnected(4096, 2, seed)
     };
     // , 
 
@@ -399,34 +429,67 @@ int main(int argc, char **argv)
         MaxPool *p_module;
 
         ///////////////////////////////////////
-        // Conv2d layer
         conv_module = (Conv2d *) modules[0];
         output = conv_forward(xy.first,conv_module);
-        /////////////////////////////////////// End of CNN1
 
-
-        p_module = (MaxPool *) modules[1];
-        output = pool_forward(output, p_module);
-
-        conv_module = (Conv2d *) modules[2];
+        conv_module = (Conv2d *) modules[1];
         output = conv_forward(output,conv_module);
 
-        p_module = (MaxPool *) modules[3];
+        p_module = (MaxPool *) modules[2];
         output = pool_forward(output, p_module);
 
-   
+        //////////////////////////////////////////
+
+        conv_module = (Conv2d *) modules[3];
+        output = conv_forward(output,conv_module);
+
         conv_module = (Conv2d *) modules[4];
         output = conv_forward(output,conv_module);
 
-        conv_module = (Conv2d *) modules[5];
-        output = conv_forward(output,conv_module);
-
-        conv_module= (Conv2d *) modules[6];
-        output = conv_forward(output,conv_module);
-
-        p_module = (MaxPool *) modules[7];
+        p_module = (MaxPool *) modules[5];
         output = pool_forward(output, p_module);
 
+        //////////////////////////////////////////
+
+        conv_module = (Conv2d *) modules[6];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[7];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[8];
+        output = conv_forward(output,conv_module);
+
+        p_module = (MaxPool *) modules[9];
+        output = pool_forward(output, p_module);
+
+        //////////////////////////////////////////
+
+        conv_module = (Conv2d *) modules[10];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[11];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[12];
+        output = conv_forward(output,conv_module);
+
+        p_module = (MaxPool *) modules[13];
+        output = pool_forward(output, p_module);
+
+        //////////////////////////////////////////
+
+        conv_module = (Conv2d *) modules[14];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[15];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[16];
+        output = conv_forward(output,conv_module);
+
+        p_module = (MaxPool *) modules[17];
+        output = pool_forward(output, p_module);
   
         ///// Handling ouput to flatten
         output = flatten(output);
@@ -434,12 +497,14 @@ int main(int argc, char **argv)
         //cout << " flat shape" << output_flat.dims[0] << " " << output_flat.dims[1] << endl;
         ////////////////////////////////////////
 
-        fc_module = (FullyConnected *) modules[8];
+        fc_module = (FullyConnected *) modules[18];
         output = fc_forward(output,fc_module);
 
         //// END FC1 //////////////////////////////////////////
-        //// RELU
-        fc_module = (FullyConnected *) modules[9];
+        fc_module = (FullyConnected *) modules[19];
+        output = fc_forward(output,fc_module);  
+
+        fc_module = (FullyConnected *) modules[20];
         output = fc_forward(output,fc_module);        
 
         ///// END RELU /////////////////////////////////////////

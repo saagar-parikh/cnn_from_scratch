@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 
     printf("Loading testing set... ");
     fflush(stdout);
-    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 32);
+    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 4);
 
     // MNISTDataLoader test_loader(data_path + "/t10k-images-idx3-ubyte", data_path + "/t10k-labels-idx1-ubyte", 32);
     // model.load("network.txt");

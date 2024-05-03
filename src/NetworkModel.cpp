@@ -5,6 +5,9 @@
 #include "../include/NetworkModel.h"
 #include "../include/LRScheduler.h"
 #include "../include/Tensor.h"
+#include <chrono>
+using namespace std::chrono;
+
 
 using namespace std;
 
@@ -32,7 +35,10 @@ double NetworkModel::trainStep(Tensor<double> &x, vector<int>& y) {
 
 Tensor<double> NetworkModel::forward(Tensor<double> &x) {
     for (auto &module : modules_) {
+        auto start = high_resolution_clock::now();
         x = module->forward(x);
+        auto end = high_resolution_clock::now();
+        cout << "Time taken " << duration_cast<microseconds>(end - start).count() << endl;
     }
     return output_layer_->predict(x);
 }

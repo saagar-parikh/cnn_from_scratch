@@ -119,6 +119,8 @@ __global__ void matmul_kernel(float *mat1, float *mat2,
     __syncthreads();
 }
 
+
+
 Tensor<double> fc_forward(Tensor<double> input, FullyConnected *module_fc){
 
         Tensor<double> fc_weights = module_fc->weights;
@@ -348,24 +350,21 @@ int main(int argc, char **argv)
     // in_channels, out_channels, kernel_size, stride, padding, seed
 
     int seed = 0;
-    // vector<Module *> modules = {
-    //     new Conv2d(1, 32, 11, 4, 0, seed), //54x54x32
-    //     new MaxPool(3,2), //26x26
-    //     new Conv2d(32, 64, 5, 1, 2, seed), //26x26
-    //     new MaxPool(3,2), //12x12
-    //     new Conv2d(64, 128, 3, 1, 2, seed), //14x14
-    //     new Conv2d(128, 256, 3, 1, 2, seed), //16x16
-    //     new Conv2d(256, 32, 3, 1, 2, seed), //18x18
-    //     new MaxPool(3,2), //8x8
-    //     new FullyConnected(8*8*32, 512, seed), 
-    //     new FullyConnected(512, 2, seed)
     vector<Module *> modules = {
-        new Conv2d(1, 8, 3, 1, 0, seed), // 222x222
-        new MaxPool(2, 2), // 111x111
-        new ReLU(), 
-        new FullyConnected(8*111*111, 30, seed), 
+        new Conv2d(1, 32, 5, 4, 1, seed), //56x56x32
+        new MaxPool(2,2), //
+        new Conv2d(32, 64, 3, 1, 1, seed), // 9 ms
+        new Conv2d(64, 64, 3, 1, 1, seed),
+        new Conv2d(64, 64, 3, 1, 1, seed),
+        new MaxPool(2,2), //56x56
+        new Conv2d(64, 128, 3, 1, 1, seed), // 11ms
+        new Conv2d(128, 32, 3, 1, 1, seed),
+        new MaxPool(2,2), 
+        new FullyConnected(7*7*128, 1024, seed), 
         new ReLU(),
-        new FullyConnected(30, 2, seed) 
+        new FullyConnected(1024, 256, seed), 
+        new ReLU(),
+        new FullyConnected(1024, 2, seed)
     };
     // , 
 
@@ -376,7 +375,7 @@ int main(int argc, char **argv)
 
     printf("Loading testing set... ");
     fflush(stdout);
-    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 32);
+    MNISTDataLoader test_loader(data_path + "/mnist_test_images.ubyte", data_path + "/mnist_test_labels.ubyte", 64);
 
     // MNISTDataLoader test_loader(data_path + "/t10k-images-idx3-ubyte", data_path + "/t10k-labels-idx1-ubyte", 32);
     // model.load("network.txt");
@@ -405,30 +404,70 @@ int main(int argc, char **argv)
         FullyConnected *fc_module;
         MaxPool *p_module;
         ReLU *relu_module;
+        int module_i = 0;
 
         ///////////////////////////////////////
-        conv_module = (Conv2d *) modules[0];
+        // Conv2d layer
+        conv_module = (Conv2d *) modules[module_i++];
         output = conv_forward(xy.first,conv_module);
+        /////////////////////////////////////// End of CNN1
 
-        p_module = (MaxPool *) modules[1];
+
+        p_module = (MaxPool *) modules[module_i++];
         output = pool_forward(output, p_module);
-  
-        // //// RELU
-        relu_module = (ReLU *) modules[2];
-        output = relu_module->forward(output); 
 
+        conv_module = (Conv2d *) modules[module_i++];
+        output = conv_forward(output,conv_module);
+
+        conv_module = (Conv2d *) modules[module_i++];
+        output = conv_forward(output,conv_module);
+        
+        conv_module = (Conv2d *) modules[module_i++];
+        output = conv_forward(output,conv_module);
+
+        p_module = (MaxPool *) modules[module_i++];
+        output = pool_forward(output, p_module);
+
+   
+
+
+        conv_module= (Conv2d *) modules[module_i++];
+        output = conv_forward(output,conv_module);
+
+        conv_module= (Conv2d *) modules[module_i++];
+        output = conv_forward(output,conv_module);
+
+        p_module = (MaxPool *) modules[module_i++];
+        output = pool_forward(output, p_module);
+
+  
         ///// Handling ouput to flatten
         output = flatten(output);
 
-        fc_module = (FullyConnected *) modules[3];
+        //cout << " flat shape" << output_flat.dims[0] << " " << output_flat.dims[1] << endl;
+        ////////////////////////////////////////
+
+        fc_module = (FullyConnected *) modules[module_i++];
         output = fc_forward(output,fc_module);
 
-        relu_module = (ReLU *) modules[4];
-        output = relu_module->forward(output); 
+        ////////////////////////////////
 
-        fc_module = (FullyConnected *) modules[5];
+        relu_module = (ReLU *) modules[module_i++];
+        output = relu_module->forward(output);
+
+        //// END FC1 //////////////////////////////////////////
+        //// RELU
+        fc_module = (FullyConnected *) modules[module_i++];
+        output = fc_forward(output,fc_module);    
+
+        relu_module = (ReLU *) modules[module_i++];
+        output = relu_module->forward(output);
+
+        fc_module = (FullyConnected *) modules[module_i++];
         output = fc_forward(output,fc_module);        
 
+        ///// END RELU /////////////////////////////////////////
+        // FC layer 2
         auto end_time = high_resolution_clock::now();
 
         auto duration = duration_cast<microseconds>(end_time - start_time).count();
